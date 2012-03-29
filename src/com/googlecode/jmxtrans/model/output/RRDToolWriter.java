@@ -169,7 +169,14 @@ public class RRDToolWriter extends BaseOutputWriter {
 
 		ProcessBuilder pb = new ProcessBuilder(commands);
 		Process process = pb.start();
-		checkErrorStream(process);
+		try {
+            checkErrorStream(process);
+        }
+        finally {
+            IOUtils.closeQuietly(process.getInputStream());
+            IOUtils.closeQuietly(process.getOutputStream());
+            IOUtils.closeQuietly(process.getErrorStream());
+        }
 	}
 
 	/**
