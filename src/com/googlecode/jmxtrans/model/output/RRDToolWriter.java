@@ -10,15 +10,14 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.TreeMap;
 
+import javax.xml.bind.JAXBContext;
+import javax.xml.bind.Unmarshaller;
+
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.WordUtils;
-import org.jrobin.core.ArcDef;
-import org.jrobin.core.DsDef;
-import org.jrobin.core.RrdDef;
-import org.jrobin.core.RrdDefTemplate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,6 +25,7 @@ import com.googlecode.jmxtrans.model.Query;
 import com.googlecode.jmxtrans.model.Result;
 import com.googlecode.jmxtrans.util.BaseOutputWriter;
 import com.googlecode.jmxtrans.util.JmxUtils;
+import com.googlecode.jmxtrans.util.RRDTemplate;
 import com.googlecode.jmxtrans.util.ValidationException;
 
 /**
@@ -40,7 +40,6 @@ import com.googlecode.jmxtrans.util.ValidationException;
  * @author jon
  */
 public class RRDToolWriter extends BaseOutputWriter {
-
 	private static final Logger log = LoggerFactory.getLogger(RRDToolWriter.class);
 
 	private File outputFile = null;
@@ -90,9 +89,9 @@ public class RRDToolWriter extends BaseOutputWriter {
 
 	/** */
 	public void doWrite(Query query) throws Exception {
-		RrdDef def = getDatabaseTemplateSpec();
+		RRDTemplate def = getDatabaseTemplateSpec();
 
-		List<String> dsNames = getDsNames(def.getDsDefs());
+		List<String> dsNames = getDsNames(def);
 		List<Result> results = query.getResults();
 
 		Map<String, String> dataMap = new TreeMap<String, String>();
@@ -183,36 +182,35 @@ public class RRDToolWriter extends BaseOutputWriter {
 	 * If the database file doesn't exist, it'll get created, otherwise, it'll
 	 * be returned in r/w mode.
 	 */
-	protected RrdDef getDatabaseTemplateSpec() throws Exception {
-		RrdDefTemplate t = new RrdDefTemplate(templateFile);
-		t.setVariable("database", this.outputFile.getCanonicalPath());
-		RrdDef def = t.getRrdDef();
+	protected RRDTemplate getDatabaseTemplateSpec() throws Exception {
+		Unmarshaller u = JAXBContext.newInstance(RRDTemplate.class).createUnmarshaller();
+		RRDTemplate t = (RRDTemplate) u.unmarshal(templateFile);
+
 		if (!this.outputFile.exists()) {
 			FileUtils.forceMkdir(this.outputFile.getParentFile());
-			rrdToolCreateDatabase(def);
+			rrdToolCreateDatabase(t);
 		}
-		return def;
+		return t;
 	}
 
 	/**
 	 * Calls out to the rrdtool binary with the 'create' command.
 	 */
-	protected void rrdToolCreateDatabase(RrdDef def) throws Exception {
+	protected void rrdToolCreateDatabase(RRDTemplate t) throws Exception {
 		List<String> commands = new ArrayList<String>();
 		commands.add(this.binaryPath + "/rrdtool");
 		commands.add("create");
 		commands.add(this.outputFile.getCanonicalPath());
 		commands.add("-s");
-		commands.add(String.valueOf(def.getStep()));
+		commands.add(String.valueOf(t.step));
 
-		for (DsDef dsdef : def.getDsDefs()) {
-			commands.add(getDsDefStr(dsdef));
+		for (RRDTemplate.DataSource dsdef : t.datasource) {
+			commands.add(String.format("DS:%s:%s:%s:%s:%s", dsdef.name, dsdef.type, dsdef.heartbeat, dsdef.min, dsdef.max));
 		}
 
-		for (ArcDef adef : def.getArcDefs()) {
-			commands.add(getRraStr(adef));
+		for (RRDTemplate.Archive archive : t.archive) {
+			commands.add(String.format("RRA:%s:%s:%s:%s", archive.cf, archive.xff, archive.steps, archive.rows));
 		}
-
 		ProcessBuilder pb = new ProcessBuilder(commands);
 		Process process = pb.start();
 		try {
@@ -242,42 +240,13 @@ public class RRDToolWriter extends BaseOutputWriter {
 	}
 
 	/**
-	 * Generate a RRA line for rrdtool
-	 */
-	private String getRraStr(ArcDef def) {
-		return "RRA:" + def.getConsolFun() + ":" + def.getXff() + ":" + def.getSteps() + ":" + def.getRows();
-	}
-
-	/**
-	 * "rrdtool create temperature.rrd --step 300 \\\n" +
-	 * "         DS:temp:GAUGE:600:-273:5000 \\\n" +
-	 * "         RRA:AVERAGE:0.5:1:1200 \\\n" +
-	 * "         RRA:MIN:0.5:12:2400 \\\n" + "         RRA:MAX:0.5:12:2400 \\\n"
-	 * + "         RRA:AVERAGE:0.5:12:2400"
-	 */
-	private String getDsDefStr(DsDef def) {
-		return "DS:" + def.getDsName() + ":" + def.getDsType() + ":" + def.getHeartbeat() + ":" + formatDouble(def.getMinValue()) + ":"
-				+ formatDouble(def.getMaxValue());
-	}
-
-	/**
 	 * Get a list of DsNames used to create the datasource.
 	 */
-	private List<String> getDsNames(DsDef[] defs) {
+	private List<String> getDsNames(RRDTemplate def) {
 		List<String> names = new ArrayList<String>();
-		for (DsDef def : defs) {
-			names.add(def.getDsName());
+		for (RRDTemplate.DataSource ds : def.datasource) {
+			names.add(ds.name);
 		}
 		return names;
-	}
-
-	/**
-	 * If dbl is NaN, then return U
-	 */
-	private String formatDouble(double dbl) {
-		if (Double.isNaN(dbl)) {
-			return "U";
-		}
-		return String.valueOf(dbl);
 	}
 }
