@@ -287,10 +287,9 @@ public class JmxTransformer implements WatchedCallback {
 
 		this.processServersIntoJobs(this.serverScheduler);
 
-		// Sleep for 10 seconds to wait for jobs to complete.
-		// There should be a better way, but it seems that way isn't working
-		// right now.
-		Thread.sleep(10 * 1000);
+		if (!this.isRunEndlessly()) {
+			this.serverScheduler.shutdown(true);
+		}
 	}
 
 	/**
