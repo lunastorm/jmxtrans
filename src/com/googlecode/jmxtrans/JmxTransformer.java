@@ -288,7 +288,7 @@ public class JmxTransformer implements WatchedCallback {
 		this.processServersIntoJobs(this.serverScheduler);
 
 		if (!this.isRunEndlessly()) {
-			this.serverScheduler.shutdown(true);
+			this.serverScheduler.shutdown(false);
 		}
 	}
 
