@@ -287,8 +287,13 @@ public class JmxTransformer implements WatchedCallback {
 
 		this.processServersIntoJobs(this.serverScheduler);
 
+		/*
+		 * Workaround to make job ran before scheduler shutdown
+		 */
+		Thread.sleep(10000);
+
 		if (!this.isRunEndlessly()) {
-			this.serverScheduler.shutdown(false);
+			this.serverScheduler.shutdown(true);
 		}
 	}
 
