@@ -101,7 +101,7 @@ public class JmxTransformer implements WatchedCallback {
 		}
 
 		ManagedJmxTransformerProcess mbean = new ManagedJmxTransformerProcess(this);
-		JmxUtils.registerJMX(mbean);
+		//JmxUtils.registerJMX(mbean);
 
 		// Start the process
 		this.start();
@@ -118,7 +118,7 @@ public class JmxTransformer implements WatchedCallback {
 			}
 		}
 
-		JmxUtils.unregisterJMX(mbean);
+		//JmxUtils.unregisterJMX(mbean);
 	}
 
 	/**
@@ -207,10 +207,10 @@ public class JmxTransformer implements WatchedCallback {
 				log.debug("Shutdown watch service");
 			}
 
-			for (String key : poolMap.keySet()) {
+			/*for (String key : poolMap.keySet()) {
 				JmxUtils.unregisterJMX(poolMBeans.get(key));
 			}
-			this.poolMBeans = null;
+			this.poolMBeans = null;*/
 
 			// Shutdown the pools
 			for (Entry<String, KeyedObjectPool> entry : this.poolMap.entrySet()) {
@@ -317,14 +317,14 @@ public class JmxTransformer implements WatchedCallback {
 		if (this.poolMap == null) {
 			this.poolMap = JmxUtils.getDefaultPoolMap();
 
-			this.poolMBeans = new HashMap<String, ManagedGenericKeyedObjectPool>();
+			/*this.poolMBeans = new HashMap<String, ManagedGenericKeyedObjectPool>();
 
 			for (String key : poolMap.keySet()) {
 				ManagedGenericKeyedObjectPool mbean = new ManagedGenericKeyedObjectPool((GenericKeyedObjectPool) poolMap.get(key));
 				mbean.setPoolName(key);
 				JmxUtils.registerJMX(mbean);
 				poolMBeans.put(key, mbean);
-			}
+			}*/
 		}
 	}
 
