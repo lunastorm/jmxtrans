@@ -112,7 +112,6 @@
 				<include name="**/*.class"/>
 			</preserveintarget>
 			<fileset dir="src" defaultexcludes="yes">
-				<include name="**/*.xml"/>
 				<include name="**/*.properties"/>
 			</fileset>
 		</sync>
